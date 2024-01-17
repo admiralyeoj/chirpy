@@ -4,31 +4,35 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/admiralyeoj/chirpy/internal/database"
 )
+
+const dbPath string = "database.json"
 
 type RequestBody struct {
 	// the key will be the name of struct field unless you give it an explicit JSON tag
 	Body string `json:"body"`
 }
 
-type ResponseData struct {
-	// the key will be the name of struct field unless you give it an explicit JSON tag
-	Body string `json:"cleaned_body"`
-}
-
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+func handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	// Create a variable to hold the JSON data.
 	var body RequestBody
+	db, err := database.NewDB(dbPath)
+
+	if err != nil {
+		respondWithError(w, 500, err.Error())
+	}
 
 	// Decode the JSON data from the request body.
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err = json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		respondWithError(w, 400, "Something went wrong")
 		return
 	}
 
 	if len(body.Body) > 140 {
-		respondWithError(w, 400, "Something went wrong")
+		respondWithError(w, 400, "Chirp is too long")
 		return
 	}
 
@@ -39,8 +43,31 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 	cleaned := getCleanedBody(body.Body, badWords)
 
-	responseBody := ResponseData{Body: cleaned}
-	respondWithJSON(w, 200, responseBody)
+	chirp, err := db.CreateChirp(cleaned)
+
+	if err != nil {
+		respondWithError(w, 400, err.Error())
+		return
+	}
+
+	respondWithJSON(w, 201, chirp)
+}
+
+func handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	// Create a variable to hold the JSON data.
+	db, err := database.NewDB(dbPath)
+
+	if err != nil {
+		respondWithError(w, 500, err.Error())
+	}
+
+	chirps, err := db.GetChirps()
+
+	if err != nil {
+		respondWithError(w, 400, err.Error())
+	}
+
+	respondWithJSON(w, 200, chirps)
 }
 
 func getCleanedBody(body string, badWords map[string]struct{}) string {
