@@ -39,6 +39,7 @@ func main() {
 
 	apiRouter.Get("/healthz", handlerReadiness)
 	apiRouter.Get("/reset", apiCfg.handlerReset)
+	apiRouter.Post("/validate_chirp", handlerValidateChirp)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	http.ListenAndServe(":"+port, r)
