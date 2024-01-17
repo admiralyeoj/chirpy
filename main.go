@@ -16,43 +16,30 @@ func main() {
 		fileserverHits: 0,
 	}
 
-	// Create a new http.ServeMux
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-
-	// Wrap the mux with the middlewareCors
-	corsMux := middlewareCors(r)
-
-	// Create a handler for serving static files from the "/app/" path
-	// Change the path to your actual directory where index.html and logo.png are located
-	// appDir := http.Dir(filepathRoot)
-	// appHandler := http.StripPrefix("/app", http.FileServer(appDir))
-	// r.Handle("/app/", apiCfg.middlewareMetricsInc(appHandler))
+	r.Use(middlewareCors)
 
 	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
 	r.Handle("/app", fsHandler)
+	r.Handle("/app/*", fsHandler)
 
-	// Register the file server to handle requests for assets.
-	r.Get("/app/*", func(w http.ResponseWriter, r *http.Request) {
-		fsHandler.ServeHTTP(w, r)
-	})
+	adminRouter := chi.NewRouter()
+	r.Mount("/admin", adminRouter)
 
-	r.Get("/healthz", handlerReadiness)
-	r.Get("/metrics", apiCfg.handlerMetrics)
+	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
 
-	// Register the hits endpoint using mux.HandleFunc
-	r.HandleFunc("/reset", apiCfg.handlerReset)
+	// Mount API Routes Here
+	apiRouter := chi.NewRouter()
+	r.Mount("/api", apiRouter)
 
-	// Create a new http.Server and use corsMux as the handler
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: corsMux,
-	}
+	apiRouter.Get("/healthz", handlerReadiness)
+	apiRouter.Get("/reset", apiCfg.handlerReset)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
-	log.Fatal(srv.ListenAndServe())
+	http.ListenAndServe(":"+port, r)
 }
