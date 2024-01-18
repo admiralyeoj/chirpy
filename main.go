@@ -43,6 +43,7 @@ func main() {
 	// Chirps
 	apiRouter.Get("/chirps", handlerGetChirps)
 	apiRouter.Post("/chirps", handlerCreateChirp)
+	apiRouter.Get("/chirps/{chirpId}", handlerGetChirpById)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	http.ListenAndServe(":"+port, r)

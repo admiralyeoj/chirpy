@@ -15,7 +15,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 	jsonData, _ := json.Marshal(errorMessage)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(code)
 	w.Write(jsonData)
 }
 
@@ -23,7 +23,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	dat, err := json.Marshal(payload)
 
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
