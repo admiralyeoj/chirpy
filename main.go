@@ -13,14 +13,10 @@ import (
 )
 
 func main() {
-
-	// Create a pointer to a boolean flag named "debug"
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 
-	// Parse the command line to populate the "debug" variable
 	flag.Parse()
 
-	// You can now use the "debug" variable to check if the flag was provided
 	if *dbg {
 		fmt.Println("Debug mode is enabled")
 		err := os.Remove(dbPath)
