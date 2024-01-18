@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/admiralyeoj/chirpy/internal/database"
 	"github.com/go-chi/chi/v5"
 )
 
-func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	// Create a variable to hold the JSON data.
 	var body RequestBody
 
@@ -21,19 +20,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if len(body.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
-		return
-	}
-
-	badWords := map[string]struct{}{
-		"kerfuffle": {},
-		"sharbert":  {},
-		"fornax":    {},
-	}
-	cleaned := getCleanedBody(body.Body, badWords)
-
-	chirp, err := cfg.DB.CreateChirp(cleaned)
+	chirp, err := cfg.DB.CreateUser(body.Email)
 
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
@@ -43,27 +30,24 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	respondWithJSON(w, http.StatusCreated, chirp)
 }
 
-func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	chirpIDString := chi.URLParam(r, "chirpID")
-	chirpID, err := strconv.Atoi(chirpIDString)
+func (cfg *apiConfig) handlerGetUsers(w http.ResponseWriter, r *http.Request) {
+	// Create a variable to hold the JSON data.
+	db, err := database.NewDB(dbPath)
+
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
-		return
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
-	dbChirp, err := cfg.DB.GetChirp(chirpID)
+	chirps, err := db.GetChirps()
+
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Couldn't get chirp")
-		return
+		respondWithError(w, http.StatusBadRequest, err.Error())
 	}
 
-	respondWithJSON(w, http.StatusOK, database.Chirp{
-		ID:   dbChirp.ID,
-		Body: dbChirp.Body,
-	})
+	respondWithJSON(w, http.StatusOK, chirps)
 }
 
-func (cfg *apiConfig) handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerGetUserById(w http.ResponseWriter, r *http.Request) {
 	// Create a variable to hold the JSON data.
 	chirpIDStr := chi.URLParam(r, "chirpId")
 	chirpID, err := strconv.Atoi(chirpIDStr)
@@ -93,16 +77,4 @@ func (cfg *apiConfig) handlerGetChirpById(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJSON(w, http.StatusOK, chirp)
-}
-
-func getCleanedBody(body string, badWords map[string]struct{}) string {
-	words := strings.Split(body, " ")
-	for i, word := range words {
-		loweredWord := strings.ToLower(word)
-		if _, ok := badWords[loweredWord]; ok {
-			words[i] = "****"
-		}
-	}
-	cleaned := strings.Join(words, " ")
-	return cleaned
 }

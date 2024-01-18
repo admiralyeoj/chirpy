@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/admiralyeoj/chirpy/internal/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -12,8 +13,14 @@ func main() {
 	const filepathRoot = "./app"
 	const port = "8080"
 
+	db, err := database.NewDB("database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	apiCfg := apiConfig{
 		fileserverHits: 0,
+		DB:             db,
 	}
 
 	r := chi.NewRouter()
@@ -38,12 +45,15 @@ func main() {
 	r.Mount("/api", apiRouter)
 
 	apiRouter.Get("/healthz", handlerReadiness)
-	apiRouter.Get("/reset", apiCfg.handlerReset)
+	apiRouter.Get("/reset", apiCfg.handlerMetricsReset)
 
 	// Chirps
-	apiRouter.Get("/chirps", handlerGetChirps)
-	apiRouter.Post("/chirps", handlerCreateChirp)
-	apiRouter.Get("/chirps/{chirpId}", handlerGetChirpById)
+	apiRouter.Post("/chirps", apiCfg.handlerCreateChirp)
+	apiRouter.Get("/chirps", apiCfg.handlerGetChirps)
+	apiRouter.Get("/chirps/{chirpId}", apiCfg.handlerGetChirpById)
+
+	// Users
+	apiRouter.Post("/users", apiCfg.handlerCreateUser)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	http.ListenAndServe(":"+port, r)
