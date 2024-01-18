@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/admiralyeoj/chirpy/internal/database"
 	"github.com/go-chi/chi/v5"
@@ -10,10 +13,27 @@ import (
 )
 
 func main() {
+
+	// Create a pointer to a boolean flag named "debug"
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+
+	// Parse the command line to populate the "debug" variable
+	flag.Parse()
+
+	// You can now use the "debug" variable to check if the flag was provided
+	if *dbg {
+		fmt.Println("Debug mode is enabled")
+		err := os.Remove(dbPath)
+		if err != nil {
+			fmt.Println("Error deleting the file:", err)
+			return
+		}
+	}
+
 	const filepathRoot = "./app"
 	const port = "8080"
 
-	db, err := database.NewDB("database.json")
+	db, err := database.NewDB(dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
