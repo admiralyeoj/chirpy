@@ -66,7 +66,7 @@ func main() {
 	// Chirps
 	apiRouter.Post("/chirps", apiCfg.handlerCreateChirp)
 	apiRouter.Get("/chirps", apiCfg.handlerGetChirps)
-	apiRouter.Get("/chirps/{chirpId}", apiCfg.handlerGetChirpById)
+	apiRouter.Get("/chirps/{chirpID}", apiCfg.handlerGetChirpById)
 
 	// Users
 	apiRouter.Post("/users", apiCfg.handlerCreateUser)

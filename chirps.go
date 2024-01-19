@@ -2,48 +2,74 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/admiralyeoj/chirpy/internal/database"
 	"github.com/go-chi/chi/v5"
 )
 
+type Chirp struct {
+	ID   int    `json:"id"`
+	Body string `json:"body"`
+}
+
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
-	// Create a variable to hold the JSON data.
-	var body RequestBody
+	type parameters struct {
+		Body string `json:"body"`
+	}
 
-	// Decode the JSON data from the request body.
-	err := json.NewDecoder(r.Body).Decode(&body)
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Something went wrong")
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
 
-	if len(body.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
-		return
-	}
-
-	badWords := map[string]struct{}{
-		"kerfuffle": {},
-		"sharbert":  {},
-		"fornax":    {},
-	}
-	cleaned := getCleanedBody(body.Body, badWords)
-
-	chirp, err := cfg.DB.CreateChirp(cleaned)
-
+	cleaned, err := validateChirp(params.Body)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, chirp)
+	chirp, err := cfg.DB.CreateChirp(cleaned)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp")
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, Chirp{
+		ID:   chirp.ID,
+		Body: chirp.Body,
+	})
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.DB.GetChirps()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
+		return
+	}
+
+	chirps := []Chirp{}
+	for _, dbChirp := range dbChirps {
+		chirps = append(chirps, Chirp{
+			ID:   dbChirp.ID,
+			Body: dbChirp.Body,
+		})
+	}
+
+	sort.Slice(chirps, func(i, j int) bool {
+		return chirps[i].ID < chirps[j].ID
+	})
+
+	respondWithJSON(w, http.StatusOK, chirps)
+}
+
+func (cfg *apiConfig) handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
 	chirpIDString := chi.URLParam(r, "chirpID")
 	chirpID, err := strconv.Atoi(chirpIDString)
 	if err != nil {
@@ -57,42 +83,25 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, database.Chirp{
+	respondWithJSON(w, http.StatusOK, Chirp{
 		ID:   dbChirp.ID,
 		Body: dbChirp.Body,
 	})
 }
 
-func (cfg *apiConfig) handlerGetChirpById(w http.ResponseWriter, r *http.Request) {
-	// Create a variable to hold the JSON data.
-	chirpIDStr := chi.URLParam(r, "chirpId")
-	chirpID, err := strconv.Atoi(chirpIDStr)
-	if err != nil {
-		// Handle the error if the parameter is not a valid integer
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
+func validateChirp(body string) (string, error) {
+	const maxChirpLength = 140
+	if len(body) > maxChirpLength {
+		return "", errors.New("Chirp is too long")
 	}
 
-	chirps, err := cfg.DB.GetChirps()
-
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+	badWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
 	}
-
-	chirp := database.Chirp{}
-	for _, c := range chirps {
-		if c.ID == chirpID {
-			chirp = c
-			break
-		}
-	}
-
-	if chirp.ID == 0 {
-		respondWithError(w, http.StatusNotFound, "Chirp was not found")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, chirp)
+	cleaned := getCleanedBody(body, badWords)
+	return cleaned, nil
 }
 
 func getCleanedBody(body string, badWords map[string]struct{}) string {
