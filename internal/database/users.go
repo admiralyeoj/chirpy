@@ -29,7 +29,7 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 		Email:    email,
 		Password: hashedPassword,
 	}
-	dbStructure.Users[id] = user
+	dbStructure.Users[email] = user
 
 	err = db.writeDB(dbStructure)
 	if err != nil {
@@ -39,13 +39,13 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 	return user, nil
 }
 
-func (db *DB) GetUser(id int) (User, error) {
+func (db *DB) GetUser(email string) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
-	user, ok := dbStructure.Users[id]
+	user, ok := dbStructure.Users[email]
 	if !ok {
 		return User{}, os.ErrNotExist
 	}

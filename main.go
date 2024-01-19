@@ -70,6 +70,7 @@ func main() {
 
 	// Users
 	apiRouter.Post("/users", apiCfg.handlerCreateUser)
+	apiRouter.Post("/login", apiCfg.handlerAuthUser)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	http.ListenAndServe(":"+port, r)
