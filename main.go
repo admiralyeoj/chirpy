@@ -69,8 +69,8 @@ func main() {
 	apiRouter.Get("/chirps/{chirpID}", apiCfg.handlerGetChirpById)
 
 	// Users
-	apiRouter.Post("/users", apiCfg.handlerCreateUser)
-	apiRouter.Post("/login", apiCfg.handlerAuthUser)
+	apiRouter.Post("/login", apiCfg.handlerLogin)
+	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	http.ListenAndServe(":"+port, r)
